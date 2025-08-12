@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "975010009273",
+    "project_id": "gamelistnew-4494d",
+    "storage_bucket": "gamelistnew-4494d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:975010009273:android:58061832d60fdc8f69cb68",
+        "android_client_info": {
+          "package_name": "com.example.game_list"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxzYIATyYP0GbS2IwQEj2S1PucnPm3rIc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,49 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'dev.flutter.flutter-gradle-plugin'
+    id 'com.google.gms.google-services' // ✅ Required for Firebase
+}
+
+android {
+    namespace "com.example.game_list" // Change if your package name is different
+    compileSdk 34
+    ndkVersion "25.1.8937393"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    defaultConfig {
+        applicationId "com.example.game_list" // Change if your package name is different
+        minSdk 21
+        targetSdk 34
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+        multiDexEnabled true // ✅ Needed for large projects
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug // Replace with your release signing config later
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+   
+
+     classpath "com.google:gms.google-services 4.3.1"
+    
+}

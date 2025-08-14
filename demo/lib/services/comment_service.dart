@@ -87,7 +87,6 @@ class CommentService {
     return _firestore
         .collection(_collection)
         .where('gameId', isEqualTo: gameId.toString())
-        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
       print('📊 Received ${snapshot.docs.length} comments from Firestore');
@@ -95,7 +94,11 @@ class CommentService {
         print('📄 Comment doc: ${doc.id} - ${doc.data()}');
         return Comment.fromFirestore(doc);
       }).toList();
-      print('✅ Mapped ${comments.length} comments');
+      
+      // Sort by timestamp in Dart instead of Firestore to avoid index requirement
+      comments.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      
+      print('✅ Mapped and sorted ${comments.length} comments');
       return comments;
     });
   }

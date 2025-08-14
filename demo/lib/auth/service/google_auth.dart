@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    // For web, the client ID should be configured in web/index.html
+    // For other platforms, it's configured in the respective config files
+  );
 
   Future<User?> signInWithGoogle() async {
     try {

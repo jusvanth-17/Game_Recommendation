@@ -1,8 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../service/google_auth.dart';
-import 'game_detail_screen.dart';
-import '../../api/rawg_api_service.dart';
+import 'package:http/http.dart' as http;
 
 class Game {
   final int id;
@@ -22,35 +20,29 @@ class Game {
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
-    // Handle RAWG API data structure
-    final genres = json['genres'] as List<dynamic>? ?? [];
-    final platforms = json['platforms'] as List<dynamic>? ?? [];
-    
     return Game(
       id: json['id'] ?? 0,
-      title: json['name'] ?? 'Unknown Title', // RAWG uses 'name' instead of 'title'
-      thumbnail: json['background_image'] ?? '', // RAWG uses 'background_image'
-      genre: genres.isNotEmpty ? genres[0]['name'] ?? 'Unknown Genre' : 'Unknown Genre',
-      platform: platforms.isNotEmpty ? platforms[0]['platform']['name'] ?? 'Unknown Platform' : 'Unknown Platform',
-      shortDescription: json['description_raw'] ?? json['description'] ?? 'No description available',
+      title: json['title'] ?? 'Unknown Title',
+      thumbnail: json['thumbnail'] ?? '',
+      genre: json['genre'] ?? 'Unknown Genre',
+      platform: json['platform'] ?? 'Unknown Platform',
+      shortDescription: json['short_description'] ?? 'No description available',
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreenTest extends StatefulWidget {
+  const HomeScreenTest({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreenTest> createState() => _HomeScreenTestState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenTestState extends State<HomeScreenTest> {
   List<Game> games = [];
   List<Game> filteredGames = [];
   bool loading = true;
   String? error;
-  final AuthService _authService = AuthService();
-  final RawgApiService _rawgApiService = RawgApiService();
   final TextEditingController _searchController = TextEditingController();
   String selectedGenre = 'All';
   List<String> genres = ['All'];
@@ -75,32 +67,46 @@ class _HomeScreenState extends State<HomeScreen> {
         error = null;
       });
 
-      // Use RAWG API with specific date range and platforms
-      final List<dynamic> rawgData = await _rawgApiService.fetchGames(
-        startDate: '2019-09-01',
-        endDate: '2019-09-30',
-        platformIds: [18, 1, 7], // PC, PlayStation 4, Nintendo Switch
-      );
+      print('Fetching games from API...');
+      final url = Uri.parse('https://www.freetogame.com/api/games');
+      final response = await http.get(url);
 
-      final gamesList = rawgData.map((e) => Game.fromJson(e)).toList();
-      
-      // Extract unique genres
-      final Set<String> genreSet = {'All'};
-      for (var game in gamesList) {
-        genreSet.add(game.genre);
+      print('Response status: ${response.statusCode}');
+      print('Response body length: ${response.body.length}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        print('Number of games received: ${data.length}');
+        
+        final gamesList = data.map((e) => Game.fromJson(e)).toList();
+        
+        // Extract unique genres
+        final Set<String> genreSet = {'All'};
+        for (var game in gamesList) {
+          genreSet.add(game.genre);
+        }
+
+        setState(() {
+          games = gamesList;
+          filteredGames = gamesList;
+          genres = genreSet.toList();
+          loading = false;
+        });
+        
+        print('Games loaded successfully: ${games.length}');
+      } else {
+        setState(() {
+          error = 'Failed to load games. Status: ${response.statusCode}';
+          loading = false;
+        });
+        print('Error: Failed to load games. Status: ${response.statusCode}');
       }
-
-      setState(() {
-        games = gamesList;
-        filteredGames = gamesList;
-        genres = genreSet.toList();
-        loading = false;
-      });
     } catch (e) {
       setState(() {
         error = 'Network error: ${e.toString()}';
         loading = false;
       });
+      print('Exception: ${e.toString()}');
     }
   }
 
@@ -123,56 +129,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _filterGames();
   }
 
-  Future<void> _handleLogout() async {
-    try {
-      await _authService.signOut();
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error signing out: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Sign Out'),
-          content: const Text('Are you sure you want to sign out?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _handleLogout();
-              },
-              child: const Text('Sign Out'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Game Recommendations'),
+        title: const Text('Game Recommendations - Test'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -180,37 +141,17 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Games',
           ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'logout') {
-                _showLogoutDialog();
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout),
-                    SizedBox(width: 8),
-                    Text('Sign Out'),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ],
       ),
       body: Column(
         children: [
-          // User Profile Section
+          // Test User Profile Section
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
-                  // ignore: deprecated_member_use
                   color: Colors.grey.withOpacity(0.1),
                   spreadRadius: 1,
                   blurRadius: 3,
@@ -218,34 +159,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            child: Row(
+            child: const Row(
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundImage: user?.photoURL != null
-                      ? NetworkImage(user!.photoURL!)
-                      : null,
-                  child: user?.photoURL == null
-                      ? const Icon(Icons.account_circle, size: 40)
-                      : null,
+                  child: Icon(Icons.account_circle, size: 40),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Welcome, ${user?.displayName ?? "User"}!',
-                        style: const TextStyle(
+                        'Welcome, Test User!',
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        user?.email ?? "No email available",
+                        'test@example.com',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: Colors.grey,
                         ),
                       ),
                     ],
@@ -294,6 +230,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+
+          // Debug Info
+          if (loading || error != null || games.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Debug: Loading: $loading, Error: $error, Games: ${games.length}, Filtered: ${filteredGames.length}',
+                style: const TextStyle(fontSize: 12, color: Colors.blue),
+              ),
+            ),
 
           // Games List
           Expanded(
@@ -479,9 +425,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => GameDetailScreen(game: game),
+                            // Show a simple dialog with game info for testing
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text(game.title),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Genre: ${game.genre}'),
+                                    Text('Platform: ${game.platform}'),
+                                    const SizedBox(height: 8),
+                                    Text(game.shortDescription),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
                               ),
                             );
                           },
